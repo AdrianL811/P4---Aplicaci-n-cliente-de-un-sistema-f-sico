@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="credencial_hce_service_description">Credencial de acceso hospitalario</string>
+    <string name="credencial_hce_aid_description">Sistema de acceso físico NFC (AID F012345678)</string>
+</resources>

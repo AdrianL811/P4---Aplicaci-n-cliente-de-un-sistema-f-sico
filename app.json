@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Umbral",
+    "slug": "umbral-credencial",
+    "version": "1.0.0",
+    "scheme": "umbral",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "description": "Credencial NFC para personal de hospitales y centros de salud — equipo Ciberpunks",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "mx.ciberpunks.umbral"
+    },
+    "android": {
+      "package": "mx.ciberpunks.umbral",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F7F86",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "backgroundColor": "#F3F7F9"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Umbral usa tus fotos para cambiar la imagen de tu credencial.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "expo-secure-store"
+    ]
+  }
+}

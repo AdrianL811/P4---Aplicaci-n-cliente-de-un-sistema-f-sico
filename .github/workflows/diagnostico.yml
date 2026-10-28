@@ -1,0 +1,76 @@
+# Diagnóstico: compila para x86_64, arranca un emulador y guarda log y capturas en la rama diag-result.
+name: Diagnostico en emulador
+
+on:
+  push:
+    branches: [diag]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  emulador:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - name: Liberar espacio en disco
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift /usr/local/share/boost "$AGENT_TOOLSDIRECTORY/CodeQL" /usr/local/share/powershell /usr/share/miniconda || true
+          sudo rm -rf /usr/local/lib/android/sdk/ndk || true
+          df -h /
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - run: npm ci
+      - run: npx expo prebuild -p android --no-install
+
+      - name: Compilar APK x86_64 para el emulador
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=x86_64
+
+      - name: Guardar APK y limpiar
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk app.apk
+          rm -rf android node_modules ~/.gradle/caches
+          sudo rm -rf /usr/local/lib/android/sdk/ndk /usr/local/lib/android/sdk/cmake || true
+          df -h /
+
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Ejecutar en emulador
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash scripts/diag-emulador.sh app.apk
+
+      - name: Publicar resultados en la rama diag-result
+        if: always()
+        run: |
+          mkdir -p diag-out
+          echo "run ${{ github.run_number }}" > diag-out/run.txt
+          cd diag-out
+          git init -q -b diag-result
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Diagnóstico ${{ github.run_number }} (${{ github.sha }})"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" diag-result

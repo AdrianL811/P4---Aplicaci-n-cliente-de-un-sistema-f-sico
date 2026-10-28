@@ -1,0 +1,75 @@
+# Compila el APK de Umbral en los servidores de GitHub y lo publica como "Release".
+# Se ejecuta en cada push a main o manualmente desde la pestaña Actions.
+name: Compilar APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Revisar tipos
+        run: npx tsc --noEmit
+
+      - name: Generar proyecto Android (expo prebuild)
+        run: npx expo prebuild -p android --no-install
+
+      - name: Compilar APK (release, firmado con la llave de depuración)
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
+
+      - name: Preparar archivo
+        run: |
+          VERSION=$(node -p "require('./app.json').expo.version")
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/Umbral-v${VERSION}-build${{ github.run_number }}.apk"
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: umbral-apk
+          path: dist/*.apk
+
+      - name: Guardar el APK en la rama "apk"
+        run: |
+          cd dist
+          git init -q -b apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add *.apk
+          git commit -q -m "APK build ${{ github.run_number }} (${{ github.sha }})"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" apk
+
+      - name: Publicar en Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "build-${{ github.run_number }}" dist/*.apk \
+            --title "Umbral · build ${{ github.run_number }}" \
+            --notes "APK generado automáticamente desde ${{ github.sha }}. Instálalo en un teléfono Android con NFC (permite instalar apps de origen desconocido)."

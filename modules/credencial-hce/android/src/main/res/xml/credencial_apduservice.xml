@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Registro del AID. Debe coincidir con el SELECT que envía ScannerHTTP.ino:
+     00 A4 04 00 05 F0 12 34 56 78 00
+     requireDeviceUnlock="true": la credencial sólo se presenta con el teléfono desbloqueado. -->
+<host-apdu-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/credencial_hce_service_description"
+    android:requireDeviceUnlock="true">
+    <aid-group
+        android:category="other"
+        android:description="@string/credencial_hce_aid_description">
+        <aid-filter android:name="F012345678" />
+    </aid-group>
+</host-apdu-service>
